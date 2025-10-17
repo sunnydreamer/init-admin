@@ -3,11 +3,11 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { createUserWithEmailAndPassword } from "firebase/auth";
-import { auth } from "@/fireabse";
+import { useUser } from "@/context/userContext";
 
 export default function SignupPage() {
   const router = useRouter();
+  const { signup } = useUser();
 
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -18,6 +18,7 @@ export default function SignupPage() {
   const [loading, setLoading] = useState(false);
 
   const handleSignup = async () => {
+    // Validation
     if (!firstName || !lastName || !email || !password || !confirmPassword) {
       setError("Please fill in all fields.");
       return;
@@ -35,7 +36,7 @@ export default function SignupPage() {
     setError("");
 
     try {
-      await createUserWithEmailAndPassword(auth, email, password);
+      await signup(firstName, lastName, email, password);
       router.replace("/dashboard/coaches");
     } catch (err: unknown) {
       if (err instanceof Error) setError(err.message);
