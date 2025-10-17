@@ -1,8 +1,13 @@
 "use client";
 
 import { useState } from "react";
+import { signOut } from "firebase/auth";
+import { auth } from "@/fireabse";
+import { useRouter } from "next/navigation";
 
 export default function SettingsPage() {
+  const router = useRouter();
+
   const [name, setName] = useState("Admin Name");
   const [email, setEmail] = useState("admin@example.com");
   const [theme, setTheme] = useState<"light" | "dark">("light");
@@ -11,13 +16,19 @@ export default function SettingsPage() {
 
   const handleSave = async () => {
     setSaving(true);
-    await new Promise((res) => setTimeout(res, 1000)); // simulate API
+    await new Promise((res) => setTimeout(res, 1000));
     setSaving(false);
     alert("Settings saved!");
   };
 
-  const handleLogout = () => {
-    alert("Logged out!");
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+      router.replace("/auth/login");
+    } catch (err) {
+      console.error("Logout failed:", err);
+      alert("Failed to log out.");
+    }
   };
 
   const isChanged =
