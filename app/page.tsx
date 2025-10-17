@@ -1,95 +1,120 @@
-import Image from "next/image";
-import styles from "./page.module.css";
+"use client";
+
+import { useEffect, useState } from "react";
+import { db } from "../fireabse";
+import { collection, getDocs, doc, updateDoc } from "firebase/firestore";
+
+interface Coach {
+  id: string;
+  name: string;
+  status: string;
+}
 
 export default function Home() {
-  return (
-    <div className={styles.page}>
-      <main className={styles.main}>
-        <Image
-          className={styles.logo}
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol>
-          <li>
-            Get started by editing <code>app/page.tsx</code>.
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+  const [coaches, setCoaches] = useState<Coach[]>([]);
 
-        <div className={styles.ctas}>
-          <a
-            className={styles.primary}
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className={styles.logo}
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-            className={styles.secondary}
-          >
-            Read our docs
-          </a>
-        </div>
-      </main>
-      <footer className={styles.footer}>
-        <a
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+  // Fetch data from Firestore
+  useEffect(() => {
+    const fetchData = async () => {
+      const snapshot = await getDocs(collection(db, "coaches"));
+      const data: Coach[] = snapshot.docs.map((doc) => {
+        const d = doc.data() as any;
+        return {
+          id: doc.id,
+          name: d.name,
+          status: d.status.replace(/"/g, ""), // remove extra quotes
+        };
+      });
+      setCoaches(data);
+    };
+    fetchData();
+  }, []);
+
+  // Update coach status
+  const updateStatus = async (coach: Coach, newStatus: string) => {
+    const confirmed = confirm(
+      `Are you sure you want to ${
+        newStatus === "approved" ? "approve" : "cancel"
+      } ${coach.name}?`
+    );
+    if (!confirmed) return;
+
+    // Update Firestore
+    const coachRef = doc(db, "coaches", coach.id);
+    await updateDoc(coachRef, { status: newStatus });
+
+    // Update local state
+    setCoaches((prev) =>
+      prev.map((c) =>
+        c.id === coach.id
+          ? {
+              ...c,
+              status: newStatus,
+            }
+          : c
+      )
+    );
+  };
+
+  const cellStyle = {
+    border: "1px solid #ddd",
+    padding: "8px",
+    width: "150px", // fixed width
+    textAlign: "center" as const,
+  };
+
+  const buttonStyle = {
+    padding: "6px 12px",
+    backgroundColor: "#4CAF50",
+    color: "#fff",
+    border: "none",
+    borderRadius: "4px",
+    cursor: "pointer",
+  };
+
+  const cancelButtonStyle = {
+    ...buttonStyle,
+    backgroundColor: "#f44336", // red for cancel
+  };
+
+  return (
+    <div style={{ padding: 20 }}>
+      <h1>Coaches</h1>
+      <table style={{ borderCollapse: "collapse", width: "auto" }}>
+        <thead>
+          <tr>
+            <th style={cellStyle}>Name</th>
+            <th style={cellStyle}>Status</th>
+            <th style={cellStyle}>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {coaches.map((coach) => (
+            <tr key={coach.id}>
+              <td style={cellStyle}>{coach.name}</td>
+              <td style={cellStyle}>{coach.status}</td>
+              <td style={cellStyle}>
+                {coach.status === "pending" && (
+                  <button
+                    style={buttonStyle}
+                    onClick={() => updateStatus(coach, "approved")}
+                  >
+                    Approve
+                  </button>
+                )}
+                {coach.status === "approved" && (
+                  <button
+                    style={cancelButtonStyle}
+                    onClick={() => updateStatus(coach, "pending")}
+                  >
+                    Cancel
+                  </button>
+                )}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }
