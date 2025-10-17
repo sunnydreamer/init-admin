@@ -9,16 +9,31 @@ import {
 } from "react";
 import {
   onAuthStateChanged,
-  User,
   signOut,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
 } from "firebase/auth";
 import { auth, db } from "@/fireabse";
-import { doc, setDoc, serverTimestamp } from "firebase/firestore";
+import {
+  doc,
+  setDoc,
+  serverTimestamp,
+  getDoc,
+  FieldValue,
+} from "firebase/firestore";
+
+export interface FirestoreUser {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string | null;
+  isAdmin: boolean;
+  createdAt: FieldValue;
+  lastLoginAt: FieldValue;
+}
 
 interface UserContextType {
-  user: User | null;
+  user: FirestoreUser | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
   signup: (
@@ -39,20 +54,33 @@ const UserContext = createContext<UserContextType>({
 });
 
 export const UserProvider = ({ children }: { children: ReactNode }) => {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<FirestoreUser | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const fetchFirestoreUser = async (
+    uid: string
+  ): Promise<FirestoreUser | null> => {
+    try {
+      const userRef = doc(db, "users", uid);
+      const userSnap = await getDoc(userRef);
+      if (userSnap.exists()) {
+        return userSnap.data() as FirestoreUser;
+      }
+      return null;
+    } catch (err) {
+      console.error("Error fetching Firestore user:", err);
+      return null;
+    }
+  };
+
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       if (currentUser) {
-        setUser(currentUser);
-        sessionStorage.setItem(
-          "user",
-          JSON.stringify({
-            uid: currentUser.uid,
-            email: currentUser.email,
-          })
-        );
+        const firestoreUser = await fetchFirestoreUser(currentUser.uid);
+        if (firestoreUser) {
+          setUser(firestoreUser);
+          sessionStorage.setItem("user", JSON.stringify(firestoreUser));
+        }
       } else {
         setUser(null);
         sessionStorage.removeItem("user");
@@ -70,11 +98,12 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       password
     );
     const loggedInUser = userCredential.user;
-    setUser(loggedInUser);
-    sessionStorage.setItem(
-      "user",
-      JSON.stringify({ uid: loggedInUser.uid, email: loggedInUser.email })
-    );
+
+    const firestoreUser = await fetchFirestoreUser(loggedInUser.uid);
+    if (firestoreUser) {
+      setUser(firestoreUser);
+      sessionStorage.setItem("user", JSON.stringify(firestoreUser));
+    }
   };
 
   const signup = async (
@@ -90,22 +119,20 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     );
     const newUser = userCredential.user;
 
-    // Save user info to Firestore
-    await setDoc(doc(db, "users", newUser.uid), {
+    const firestoreUser: FirestoreUser = {
       id: newUser.uid,
       firstName,
       lastName,
-      email,
+      email: newUser.email,
       isAdmin: false,
       createdAt: serverTimestamp(),
       lastLoginAt: serverTimestamp(),
-    });
+    };
 
-    setUser(newUser);
-    sessionStorage.setItem(
-      "user",
-      JSON.stringify({ uid: newUser.uid, email: newUser.email })
-    );
+    await setDoc(doc(db, "users", newUser.uid), firestoreUser);
+
+    setUser(firestoreUser);
+    sessionStorage.setItem("user", JSON.stringify(firestoreUser));
   };
 
   const logout = async () => {

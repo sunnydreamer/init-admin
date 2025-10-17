@@ -1,22 +1,47 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useUser } from "@/context/userContext";
+import { doc, updateDoc } from "firebase/firestore";
+import { db } from "@/fireabse";
 
 export default function SettingsPage() {
-  const { logout } = useUser();
+  const { user, logout } = useUser();
 
-  const [name, setName] = useState("Admin Name");
-  const [email, setEmail] = useState("admin@example.com");
-  const [theme, setTheme] = useState<"light" | "dark">("light");
-  const [notifications, setNotifications] = useState(true);
+  const [firstName, setFirstName] = useState(user?.firstName || "");
+  const [lastName, setLastName] = useState(user?.lastName || "");
+  const [email, setEmail] = useState(user?.email || "");
   const [saving, setSaving] = useState(false);
 
+  // Update state if user changes asynchronously
+  useEffect(() => {
+    if (user) {
+      setFirstName(user.firstName);
+      setLastName(user.lastName);
+      setEmail(user.email ?? "");
+    }
+  }, [user]);
+
   const handleSave = async () => {
+    if (!user) return;
     setSaving(true);
-    await new Promise((res) => setTimeout(res, 1000)); // simulate API
-    setSaving(false);
-    alert("Settings saved!");
+
+    try {
+      const userRef = doc(db, "users", user.id);
+      await updateDoc(userRef, {
+        firstName,
+        lastName,
+        email,
+        lastLoginAt: new Date(),
+      });
+
+      alert("Settings saved!");
+    } catch (err) {
+      console.error("Failed to save settings:", err);
+      alert("Failed to save settings.");
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleLogout = async () => {
@@ -29,23 +54,33 @@ export default function SettingsPage() {
   };
 
   const isChanged =
-    name !== "Admin Name" ||
-    email !== "admin@example.com" ||
-    theme !== "light" ||
-    notifications !== true;
+    firstName !== (user?.firstName || "") ||
+    lastName !== (user?.lastName || "") ||
+    email !== (user?.email || "");
 
   return (
     <div className="p-6 max-w-xl space-y-6">
       <h1 className="text-2xl font-bold">Settings</h1>
 
-      {/* Name */}
+      {/* First Name */}
       <div className="flex flex-col space-y-1">
-        <label className="font-medium">Name</label>
+        <label className="font-medium">First Name</label>
         <input
           type="text"
           className="w-full border p-2 rounded"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
+          value={firstName}
+          onChange={(e) => setFirstName(e.target.value)}
+        />
+      </div>
+
+      {/* Last Name */}
+      <div className="flex flex-col space-y-1">
+        <label className="font-medium">Last Name</label>
+        <input
+          type="text"
+          className="w-full border p-2 rounded"
+          value={lastName}
+          onChange={(e) => setLastName(e.target.value)}
         />
       </div>
 
@@ -58,32 +93,6 @@ export default function SettingsPage() {
           value={email}
           onChange={(e) => setEmail(e.target.value)}
         />
-      </div>
-
-      {/* Theme */}
-      <div className="flex flex-col space-y-1">
-        <label className="font-medium">Theme</label>
-        <select
-          className="w-full border p-2 rounded"
-          value={theme}
-          onChange={(e) => setTheme(e.target.value as "light" | "dark")}
-        >
-          <option value="light">Light</option>
-          <option value="dark">Dark</option>
-        </select>
-      </div>
-
-      {/* Notifications */}
-      <div className="flex items-center space-x-2">
-        <input
-          type="checkbox"
-          id="notifications"
-          checked={notifications}
-          onChange={(e) => setNotifications(e.target.checked)}
-        />
-        <label htmlFor="notifications" className="font-medium">
-          Enable notifications
-        </label>
       </div>
 
       {/* Save button */}
