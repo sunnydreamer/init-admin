@@ -18,7 +18,8 @@ export default function Home() {
     const fetchData = async () => {
       const snapshot = await getDocs(collection(db, "coaches"));
       const data: Coach[] = snapshot.docs.map((doc) => {
-        const d = doc.data() as any;
+        const d = doc.data() as Coach;
+        console.log(d);
         return {
           id: doc.id,
           name: d.name,
