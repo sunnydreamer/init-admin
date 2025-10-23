@@ -13,7 +13,6 @@ export default function SettingsPage() {
   const [email, setEmail] = useState(user?.email || "");
   const [saving, setSaving] = useState(false);
 
-  // Update state if user changes asynchronously
   useEffect(() => {
     if (user) {
       setFirstName(user.firstName);
@@ -89,12 +88,11 @@ export default function SettingsPage() {
         <label className="font-medium">Email</label>
         <input
           type="email"
-          className="w-full border p-2 rounded"
+          className="w-full border p-2 rounded bg-gray-100 cursor-not-allowed"
           value={email}
-          onChange={(e) => setEmail(e.target.value)}
+          readOnly
         />
       </div>
-
       {/* Save button */}
       <div>
         <button

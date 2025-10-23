@@ -13,10 +13,13 @@ export default function DashboardLayout({
   const { user, loading } = useUser();
   const router = useRouter();
 
-  // Guard: redirect to login if user is not logged in
   useEffect(() => {
-    if (!loading && !user) {
-      router.replace("/auth/login");
+    if (!loading) {
+      if (!user) {
+        router.replace("/auth/login");
+      } else if (!user.isVerified) {
+        router.replace("/auth/verify-email");
+      }
     }
   }, [user, loading, router]);
 
@@ -24,8 +27,8 @@ export default function DashboardLayout({
     return <div>Checking authentication...</div>;
   }
 
-  if (!user) {
-    return null; // Will redirect to login
+  if (!user || !user.isVerified) {
+    return null;
   }
 
   return (

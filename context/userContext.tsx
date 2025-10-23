@@ -30,6 +30,7 @@ export interface FirestoreUser {
   isAdmin: boolean;
   createdAt: FieldValue;
   lastLoginAt: FieldValue;
+  isVerified?: boolean;
 }
 
 interface UserContextType {
@@ -43,6 +44,7 @@ interface UserContextType {
     password: string
   ) => Promise<void>;
   logout: () => Promise<void>;
+  refreshUserInfo: () => Promise<void>;
 }
 
 const UserContext = createContext<UserContextType>({
@@ -51,6 +53,7 @@ const UserContext = createContext<UserContextType>({
   login: async () => {},
   signup: async () => {},
   logout: async () => {},
+  refreshUserInfo: async () => {},
 });
 
 export const UserProvider = ({ children }: { children: ReactNode }) => {
@@ -70,6 +73,15 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     } catch (err) {
       console.error("Error fetching Firestore user:", err);
       return null;
+    }
+  };
+
+  const refreshUserInfo = async () => {
+    if (!auth.currentUser) return;
+    const firestoreUser = await fetchFirestoreUser(auth.currentUser.uid);
+    if (firestoreUser) {
+      setUser(firestoreUser);
+      sessionStorage.setItem("user", JSON.stringify(firestoreUser));
     }
   };
 
@@ -127,6 +139,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       isAdmin: false,
       createdAt: serverTimestamp(),
       lastLoginAt: serverTimestamp(),
+      isVerified: false,
     };
 
     await setDoc(doc(db, "users", newUser.uid), firestoreUser);
@@ -142,7 +155,9 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   };
 
   return (
-    <UserContext.Provider value={{ user, loading, login, signup, logout }}>
+    <UserContext.Provider
+      value={{ user, loading, login, signup, logout, refreshUserInfo }}
+    >
       {children}
     </UserContext.Provider>
   );

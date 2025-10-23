@@ -18,7 +18,6 @@ export default function SignupPage() {
   const [loading, setLoading] = useState(false);
 
   const handleSignup = async () => {
-    // Validation
     if (!firstName || !lastName || !email || !password || !confirmPassword) {
       setError("Please fill in all fields.");
       return;
@@ -37,7 +36,7 @@ export default function SignupPage() {
 
     try {
       await signup(firstName, lastName, email, password);
-      router.replace("/dashboard/coaches");
+      router.replace("/auth/verify-email");
     } catch (err: unknown) {
       if (err instanceof Error) setError(err.message);
       else setError(String(err));
