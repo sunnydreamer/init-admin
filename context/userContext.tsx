@@ -136,7 +136,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       firstName,
       lastName,
       email: newUser.email,
-      isAdmin: false,
+      isAdmin: true,
       createdAt: serverTimestamp(),
       lastLoginAt: serverTimestamp(),
       isVerified: false,
